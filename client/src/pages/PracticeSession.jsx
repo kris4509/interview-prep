@@ -3,12 +3,17 @@ import api from '../api/client';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
 const ROLES = [
-  { value: 'general', label: 'General' },
-  { value: 'frontend', label: 'Frontend' },
-  { value: 'backend', label: 'Backend' },
-  { value: 'fullstack', label: 'Full-stack' },
-  { value: 'data', label: 'Data' }
+  { value: 'general', label: 'General', icon: '🎯' },
+  { value: 'frontend', label: 'Frontend', icon: '🖥️' },
+  { value: 'backend', label: 'Backend', icon: '⚙️' },
+  { value: 'fullstack', label: 'Full-stack', icon: '🔗' },
+  { value: 'data', label: 'Data', icon: '📊' }
 ];
+
+const card = { backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '12px' };
+const cyan = '#06b6d4';
+const textPrimary = '#e6edf3';
+const textMuted = '#8b949e';
 
 export default function PracticeSession() {
   const [selectedRole, setSelectedRole] = useState(null);
@@ -39,10 +44,9 @@ export default function PracticeSession() {
     setGenerateMessage(null);
     try {
       const { data } = await api.post('/questions/generate', { role_tag: role, count: 5 });
-      setGenerateMessage(`Added ${data.inserted} new ${role} questions.`);
+      setGenerateMessage(`✓ Added ${data.inserted} new ${role} questions.`);
     } catch (err) {
       setGenerateMessage('Failed to generate questions. Please try again.');
-      console.error(err);
     } finally {
       setGenerating(false);
     }
@@ -60,24 +64,21 @@ export default function PracticeSession() {
 
   async function handleGenerateFromJD() {
     if (jdText.trim().length < 30) {
-      setJdError('Please paste a fuller job description (at least a few sentences).');
+      setJdError('Please paste a fuller job description.');
       return;
     }
     if (!jdLabel.trim()) {
-      setJdError('Give this job a short label, e.g. "skyfalke_backend".');
+      setJdError('Give this job a short label first.');
       return;
     }
-
     setJdSubmitting(true);
     setJdError(null);
-
     try {
       const { data } = await api.post('/questions/generate-from-jd', {
         job_description: jdText.trim(),
         label: jdLabel.trim(),
         count: 6
       });
-
       setSelectedRole(data.role_tag);
       const { data: session } = await api.post('/sessions', {
         title: `Practice session — ${jdLabel.trim()}`,
@@ -86,8 +87,7 @@ export default function PracticeSession() {
       setSessionId(session.id);
       await loadNextQuestion(session.id, data.role_tag);
     } catch (err) {
-      setJdError(err.response?.data?.error || 'Failed to generate questions from this job description.');
-      console.error(err);
+      setJdError(err.response?.data?.error || 'Failed to generate questions.');
     } finally {
       setJdSubmitting(false);
     }
@@ -112,15 +112,12 @@ export default function PracticeSession() {
   async function handleStopAnswer() {
     stopListening();
     const durationSeconds = Math.round((Date.now() - startTimeRef.current) / 1000);
-
     if (!transcript.trim()) {
-      setError('No speech was captured. Try again, speaking clearly.');
+      setError('No speech captured. Try again speaking clearly.');
       return;
     }
-
     setSubmitting(true);
     setError(null);
-
     try {
       const { data } = await api.post('/responses', {
         session_id: sessionId,
@@ -131,7 +128,6 @@ export default function PracticeSession() {
       setFeedback(data.feedback);
     } catch (err) {
       setError('Failed to generate feedback. Please try again.');
-      console.error(err);
     } finally {
       setSubmitting(false);
     }
@@ -139,74 +135,95 @@ export default function PracticeSession() {
 
   if (!isSupported) {
     return (
-      <div className="max-w-2xl mx-auto p-6 mt-10 bg-yellow-50 border border-yellow-300 rounded-lg">
-        <p className="text-yellow-800">
-          Your browser doesn't support live speech recognition. Please use Chrome or Edge for
-          practice sessions.
-        </p>
+      <div className="max-w-2xl mx-auto p-6 mt-10" style={{ ...card, borderColor: '#d97706' }}>
+        <p style={{ color: '#fbbf24' }}>Your browser doesn't support speech recognition. Please use Chrome or Edge.</p>
       </div>
     );
   }
 
   if (!selectedRole) {
     return (
-      <div className="max-w-md mx-auto p-6 mt-10 bg-white shadow rounded-lg text-center">
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">What role are you practicing for?</h2>
-        <p className="text-sm text-gray-500 mb-5">This picks questions matched to your target role.</p>
-        <div className="grid grid-cols-2 gap-3">
-          {ROLES.map((role) => (
-            <button
-              key={role.value}
-              onClick={() => handleSelectRole(role.value)}
-              className="px-4 py-3 border rounded-lg text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:border-indigo-300"
-            >
-              {role.label}
-            </button>
-          ))}
+      <div className="max-w-lg mx-auto px-4 mt-10 pb-20">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold mb-1" style={{ color: textPrimary }}>Start Practicing</h1>
+          <p className="text-sm" style={{ color: textMuted }}>Pick a role or paste a job description to begin</p>
         </div>
 
-        <div className="mt-5 pt-5 border-t">
-          <p className="text-xs text-gray-500 mb-2">Want fresher questions for a role?</p>
-          <div className="flex flex-wrap gap-2 justify-center">
+        <div style={card} className="p-5 mb-4">
+          <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: textMuted }}>Practice by role</p>
+          <div className="grid grid-cols-2 gap-2">
             {ROLES.map((role) => (
               <button
-                key={`gen-${role.value}`}
-                onClick={() => handleGenerateQuestions(role.value)}
-                disabled={generating}
-                className="text-xs px-3 py-1.5 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                key={role.value}
+                onClick={() => handleSelectRole(role.value)}
+                className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all text-left"
+                style={{
+                  backgroundColor: '#0d1117',
+                  border: '1px solid #30363d',
+                  color: textPrimary
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = cyan;
+                  e.currentTarget.style.color = cyan;
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = '#30363d';
+                  e.currentTarget.style.color = textPrimary;
+                }}
               >
-                + {role.label}
+                <span>{role.icon}</span>
+                <span>{role.label}</span>
               </button>
             ))}
           </div>
-          {generating && <p className="text-xs text-indigo-600 mt-2">Generating new questions...</p>}
-          {generateMessage && <p className="text-xs text-gray-600 mt-2">{generateMessage}</p>}
+
+          <div className="mt-4 pt-4" style={{ borderTop: '1px solid #30363d' }}>
+            <p className="text-xs mb-2" style={{ color: textMuted }}>Generate more questions for a role:</p>
+            <div className="flex flex-wrap gap-2">
+              {ROLES.map((role) => (
+                <button
+                  key={`gen-${role.value}`}
+                  onClick={() => handleGenerateQuestions(role.value)}
+                  disabled={generating}
+                  className="text-xs px-3 py-1 rounded-full transition-colors"
+                  style={{ border: `1px solid #30363d`, color: textMuted }}
+                >
+                  + {role.label}
+                </button>
+              ))}
+            </div>
+            {generating && <p className="text-xs mt-2" style={{ color: cyan }}>Generating...</p>}
+            {generateMessage && <p className="text-xs mt-2" style={{ color: '#3fb950' }}>{generateMessage}</p>}
+          </div>
         </div>
 
-        <div className="mt-5 pt-5 border-t text-left">
-          <p className="text-sm font-medium text-gray-700 mb-1">Practice from a real job posting</p>
-          <p className="text-xs text-gray-500 mb-3">Paste a job description and we'll generate questions tailored to that specific role.</p>
+        <div style={card} className="p-5">
+          <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: textMuted }}>Practice from a job posting</p>
+          <p className="text-xs mb-4" style={{ color: textMuted }}>Paste any job description — we'll tailor questions to it</p>
           <input
             type="text"
-            placeholder='Short label, e.g. "skyfalke_backend"'
+            placeholder='Label, e.g. "google_swe_intern"'
             value={jdLabel}
             onChange={(e) => setJdLabel(e.target.value)}
-            className="w-full border rounded px-3 py-2 text-sm mb-2"
+            className="w-full rounded-lg px-3 py-2 text-sm mb-2 outline-none"
+            style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: textPrimary }}
           />
           <textarea
-            placeholder="Paste the full job description here..."
+            placeholder="Paste the job description here..."
             value={jdText}
             onChange={(e) => setJdText(e.target.value)}
             rows={5}
-            className="w-full border rounded px-3 py-2 text-sm mb-2 resize-none"
+            className="w-full rounded-lg px-3 py-2 text-sm mb-3 outline-none resize-none"
+            style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: textPrimary }}
           />
-          {jdError && <p className="text-xs text-red-600 mb-2">{jdError}</p>}
+          {jdError && <p className="text-xs mb-2" style={{ color: '#f85149' }}>{jdError}</p>}
           <button
             onClick={handleGenerateFromJD}
             disabled={jdSubmitting}
-            className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50"
+            className="w-full py-2.5 rounded-lg text-sm font-medium transition-opacity"
+            style={{ backgroundColor: cyan, color: '#0d1117', opacity: jdSubmitting ? 0.6 : 1 }}
           >
-            {jdSubmitting ? 'Generating & starting session...' : 'Generate questions & start practicing'}
+            {jdSubmitting ? 'Generating questions...' : 'Generate & Start Practicing'}
           </button>
         </div>
       </div>
@@ -214,59 +231,80 @@ export default function PracticeSession() {
   }
 
   if (!question) {
-    return <div className="max-w-2xl mx-auto p-6 mt-10 text-gray-500">Loading question...</div>;
+    return (
+      <div className="max-w-2xl mx-auto p-6 mt-10 text-center">
+        <p style={{ color: textMuted }}>Loading question...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 mt-10 space-y-6">
+    <div className="max-w-2xl mx-auto px-4 mt-8 pb-20 space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-500">
-          Practicing: <span className="font-medium text-gray-700">{ROLES.find((r) => r.value === selectedRole)?.label || selectedRole}</span>
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#0d1117', border: `1px solid ${cyan}`, color: cyan }}>
+            {ROLES.find((r) => r.value === selectedRole)?.icon} {ROLES.find((r) => r.value === selectedRole)?.label || selectedRole}
+          </span>
+        </div>
         <button
           onClick={() => setSelectedRole(null)}
-          className="text-xs text-indigo-600 hover:underline"
+          className="text-xs transition-colors"
+          style={{ color: textMuted }}
         >
-          Change role
+          ← Change role
         </button>
       </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <span className="inline-block text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-1 rounded mb-3">
+      <div style={card} className="p-6">
+        <span className="inline-block text-xs font-medium px-2 py-1 rounded mb-3" style={{ backgroundColor: '#0d1117', color: cyan }}>
           {question.category.replace('_', ' ')}
         </span>
-        <h2 className="text-xl font-semibold text-gray-900">{question.text}</h2>
+        <h2 className="text-lg font-semibold leading-relaxed" style={{ color: textPrimary }}>{question.text}</h2>
       </div>
 
-      <div className="bg-white shadow rounded-lg p-6">
+      <div style={card} className="p-6">
         <div className="flex items-center justify-between mb-4">
-          <span className="text-sm text-gray-500">
-            {isListening ? 'Listening...' : 'Ready when you are'}
-          </span>
+          <div className="flex items-center gap-2">
+            {isListening && (
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#f85149' }}></span>
+            )}
+            <span className="text-sm" style={{ color: isListening ? '#f85149' : textMuted }}>
+              {isListening ? 'Recording...' : 'Ready when you are'}
+            </span>
+          </div>
           {!isListening ? (
             <button
               onClick={handleStartAnswer}
               disabled={submitting}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              className="px-5 py-2 rounded-lg text-sm font-medium transition-opacity"
+              style={{ backgroundColor: cyan, color: '#0d1117', opacity: submitting ? 0.5 : 1 }}
             >
               Start Answer
             </button>
           ) : (
             <button
               onClick={handleStopAnswer}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              className="px-5 py-2 rounded-lg text-sm font-medium"
+              style={{ backgroundColor: '#21262d', border: '1px solid #f85149', color: '#f85149' }}
             >
               Stop & Get Feedback
             </button>
           )}
         </div>
 
-        <div className="min-h-[80px] p-3 bg-gray-50 rounded text-gray-700 text-sm">
-          {transcript || <span className="text-gray-400">Your live transcript will appear here...</span>}
+        <div
+          className="min-h-20 p-4 rounded-lg text-sm leading-relaxed"
+          style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: transcript ? textPrimary : textMuted }}
+        >
+          {transcript || 'Your live transcript will appear here...'}
         </div>
 
-        {submitting && <p className="text-sm text-indigo-600 mt-3">Generating feedback...</p>}
-        {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
+        {submitting && (
+          <p className="text-sm mt-3 flex items-center gap-2" style={{ color: cyan }}>
+            <span className="animate-spin">⚙</span> Generating feedback...
+          </p>
+        )}
+        {error && <p className="text-sm mt-3" style={{ color: '#f85149' }}>{error}</p>}
       </div>
 
       {feedback && <FeedbackCard feedback={feedback} onNext={loadNextQuestion} />}
@@ -275,49 +313,61 @@ export default function PracticeSession() {
 }
 
 function FeedbackCard({ feedback, onNext }) {
+  const getScoreColor = (score) => {
+    if (score >= 4) return '#3fb950';
+    if (score >= 3) return '#d29922';
+    return '#f85149';
+  };
+
   return (
-    <div className="bg-white shadow rounded-lg p-6 space-y-4">
-      <h3 className="text-lg font-semibold text-gray-900">Feedback</h3>
-
-      <div className="grid grid-cols-2 gap-4">
-        <ScoreBox label="Structure" score={feedback.star_structure_score} />
-        <ScoreBox label="Specificity" score={feedback.specificity_score} />
+    <div style={{ backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '12px' }} className="p-6 space-y-5">
+      <div className="flex items-center gap-2">
+        <span style={{ color: '#3fb950' }}>✓</span>
+        <h3 className="font-semibold" style={{ color: '#e6edf3' }}>Feedback</h3>
       </div>
 
-      <p className="text-sm text-gray-600">
-        <span className="font-medium">Filler words:</span> {feedback.filler_word_count}
-      </p>
-
-      <div>
-        <p className="text-sm font-medium text-gray-700">Pacing</p>
-        <p className="text-sm text-gray-600">{feedback.pacing_notes}</p>
+      <div className="grid grid-cols-3 gap-3">
+        <ScoreBox label="Structure" score={feedback.star_structure_score} color={getScoreColor(feedback.star_structure_score)} />
+        <ScoreBox label="Specificity" score={feedback.specificity_score} color={getScoreColor(feedback.specificity_score)} />
+        <div className="text-center p-3 rounded-lg" style={{ backgroundColor: '#0d1117', border: '1px solid #30363d' }}>
+          <p className="text-2xl font-bold" style={{ color: '#e6edf3' }}>{feedback.filler_word_count}</p>
+          <p className="text-xs mt-1" style={{ color: '#8b949e' }}>Filler words</p>
+        </div>
       </div>
 
-      <div>
-        <p className="text-sm font-medium text-gray-700">What's missing</p>
-        <p className="text-sm text-gray-600">{feedback.content_gap_notes}</p>
-      </div>
+      <div className="space-y-3">
+        <div className="p-4 rounded-lg" style={{ backgroundColor: '#0d1117', border: '1px solid #30363d' }}>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#8b949e' }}>Pacing</p>
+          <p className="text-sm" style={{ color: '#e6edf3' }}>{feedback.pacing_notes}</p>
+        </div>
 
-      <div className="bg-indigo-50 p-4 rounded">
-        <p className="text-sm font-medium text-indigo-700 mb-1">Suggested rewrite</p>
-        <p className="text-sm text-indigo-900">{feedback.suggested_rewrite}</p>
+        <div className="p-4 rounded-lg" style={{ backgroundColor: '#0d1117', border: '1px solid #30363d' }}>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#8b949e' }}>What's missing</p>
+          <p className="text-sm" style={{ color: '#e6edf3' }}>{feedback.content_gap_notes}</p>
+        </div>
+
+        <div className="p-4 rounded-lg" style={{ backgroundColor: '#0d1117', border: `1px solid #06b6d4` }}>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#06b6d4' }}>Suggested rewrite</p>
+          <p className="text-sm leading-relaxed" style={{ color: '#e6edf3' }}>{feedback.suggested_rewrite}</p>
+        </div>
       </div>
 
       <button
         onClick={onNext}
-        className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800"
+        className="w-full py-2.5 rounded-lg text-sm font-medium transition-opacity"
+        style={{ backgroundColor: '#06b6d4', color: '#0d1117' }}
       >
-        Next Question
+        Next Question →
       </button>
     </div>
   );
 }
 
-function ScoreBox({ label, score }) {
+function ScoreBox({ label, score, color }) {
   return (
-    <div className="text-center p-3 bg-gray-50 rounded">
-      <p className="text-2xl font-bold text-gray-900">{score}/5</p>
-      <p className="text-xs text-gray-500">{label}</p>
+    <div className="text-center p-3 rounded-lg" style={{ backgroundColor: '#0d1117', border: '1px solid #30363d' }}>
+      <p className="text-2xl font-bold" style={{ color }}>{score}/5</p>
+      <p className="text-xs mt-1" style={{ color: '#8b949e' }}>{label}</p>
     </div>
   );
 }

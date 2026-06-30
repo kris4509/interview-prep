@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -13,23 +13,56 @@ function ProtectedRoute({ children }) {
 
 export default function App() {
   const { user, logout } = useAuth();
+  const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow px-6 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <span className="font-semibold text-gray-900">Interview Prep</span>
+    <div className="min-h-screen" style={{ backgroundColor: '#0d1117', color: '#e6edf3' }}>
+      <nav style={{ backgroundColor: '#161b22', borderBottom: '1px solid #30363d' }} className="px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-8">
+          <Link to="/practice" className="flex items-center gap-2">
+            <span style={{ color: '#06b6d4' }} className="text-xl font-bold tracking-tight">⚡ PrepAI</span>
+          </Link>
           {user && (
-            <div className="flex gap-4 text-sm">
-              <Link to="/practice" className="text-gray-600 hover:text-indigo-600">Practice</Link>
-              <Link to="/history" className="text-gray-600 hover:text-indigo-600">History</Link>
+            <div className="flex gap-1">
+              <Link
+                to="/practice"
+                className="px-3 py-1.5 rounded-md text-sm transition-colors"
+                style={{
+                  color: location.pathname === '/practice' ? '#06b6d4' : '#8b949e',
+                  backgroundColor: location.pathname === '/practice' ? '#0d1117' : 'transparent'
+                }}
+              >
+                Practice
+              </Link>
+              <Link
+                to="/history"
+                className="px-3 py-1.5 rounded-md text-sm transition-colors"
+                style={{
+                  color: location.pathname === '/history' ? '#06b6d4' : '#8b949e',
+                  backgroundColor: location.pathname === '/history' ? '#0d1117' : 'transparent'
+                }}
+              >
+                History
+              </Link>
             </div>
           )}
         </div>
         {user && (
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-gray-600">{user.name}</span>
-            <button onClick={logout} className="text-red-600 hover:underline">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
+                style={{ backgroundColor: '#06b6d4', color: '#0d1117' }}
+              >
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <span className="text-sm" style={{ color: '#8b949e' }}>{user.name}</span>
+            </div>
+            <button
+              onClick={logout}
+              className="text-xs px-3 py-1.5 rounded-md transition-colors"
+              style={{ color: '#8b949e', border: '1px solid #30363d' }}
+            >
               Log out
             </button>
           </div>
