@@ -1,9 +1,10 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Link } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import PracticeSession from './pages/PracticeSession';
+import SessionHistory from './pages/SessionHistory';
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
@@ -16,7 +17,15 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-white shadow px-6 py-3 flex items-center justify-between">
-        <span className="font-semibold text-gray-900">Interview Prep</span>
+        <div className="flex items-center gap-6">
+          <span className="font-semibold text-gray-900">Interview Prep</span>
+          {user && (
+            <div className="flex gap-4 text-sm">
+              <Link to="/practice" className="text-gray-600 hover:text-indigo-600">Practice</Link>
+              <Link to="/history" className="text-gray-600 hover:text-indigo-600">History</Link>
+            </div>
+          )}
+        </div>
         {user && (
           <div className="flex items-center gap-4 text-sm">
             <span className="text-gray-600">{user.name}</span>
@@ -35,6 +44,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <PracticeSession />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute>
+              <SessionHistory />
             </ProtectedRoute>
           }
         />
