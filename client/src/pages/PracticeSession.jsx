@@ -19,6 +19,10 @@ export default function PracticeSession() {
   const [error, setError] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [generateMessage, setGenerateMessage] = useState(null);
+  const [jdText, setJdText] = useState('');
+  const [jdLabel, setJdLabel] = useState('');
+  const [jdSubmitting, setJdSubmitting] = useState(false);
+  const [jdError, setJdError] = useState(null);
   const startTimeRef = useRef(null);
 
   const {
@@ -52,6 +56,41 @@ export default function PracticeSession() {
     });
     setSessionId(session.id);
     await loadNextQuestion(session.id, role);
+  }
+
+  async function handleGenerateFromJD() {
+    if (jdText.trim().length < 30) {
+      setJdError('Please paste a fuller job description (at least a few sentences).');
+      return;
+    }
+    if (!jdLabel.trim()) {
+      setJdError('Give this job a short label, e.g. "skyfalke_backend".');
+      return;
+    }
+
+    setJdSubmitting(true);
+    setJdError(null);
+
+    try {
+      const { data } = await api.post('/questions/generate-from-jd', {
+        job_description: jdText.trim(),
+        label: jdLabel.trim(),
+        count: 6
+      });
+
+      setSelectedRole(data.role_tag);
+      const { data: session } = await api.post('/sessions', {
+        title: `Practice session — ${jdLabel.trim()}`,
+        mode: 'online'
+      });
+      setSessionId(session.id);
+      await loadNextQuestion(session.id, data.role_tag);
+    } catch (err) {
+      setJdError(err.response?.data?.error || 'Failed to generate questions from this job description.');
+      console.error(err);
+    } finally {
+      setJdSubmitting(false);
+    }
   }
 
   async function loadNextQuestion(sessionIdOverride, roleOverride) {
@@ -111,7 +150,7 @@ export default function PracticeSession() {
 
   if (!selectedRole) {
     return (
-      <div className="max-w-md mx-auto p-6 mt-20 bg-white shadow rounded-lg text-center">
+      <div className="max-w-md mx-auto p-6 mt-10 bg-white shadow rounded-lg text-center">
         <h2 className="text-lg font-semibold text-gray-900 mb-1">What role are you practicing for?</h2>
         <p className="text-sm text-gray-500 mb-5">This picks questions matched to your target role.</p>
         <div className="grid grid-cols-2 gap-3">
@@ -143,6 +182,33 @@ export default function PracticeSession() {
           {generating && <p className="text-xs text-indigo-600 mt-2">Generating new questions...</p>}
           {generateMessage && <p className="text-xs text-gray-600 mt-2">{generateMessage}</p>}
         </div>
+
+        <div className="mt-5 pt-5 border-t text-left">
+          <p className="text-sm font-medium text-gray-700 mb-1">Practice from a real job posting</p>
+          <p className="text-xs text-gray-500 mb-3">Paste a job description and we'll generate questions tailored to that specific role.</p>
+          <input
+            type="text"
+            placeholder='Short label, e.g. "skyfalke_backend"'
+            value={jdLabel}
+            onChange={(e) => setJdLabel(e.target.value)}
+            className="w-full border rounded px-3 py-2 text-sm mb-2"
+          />
+          <textarea
+            placeholder="Paste the full job description here..."
+            value={jdText}
+            onChange={(e) => setJdText(e.target.value)}
+            rows={5}
+            className="w-full border rounded px-3 py-2 text-sm mb-2 resize-none"
+          />
+          {jdError && <p className="text-xs text-red-600 mb-2">{jdError}</p>}
+          <button
+            onClick={handleGenerateFromJD}
+            disabled={jdSubmitting}
+            className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {jdSubmitting ? 'Generating & starting session...' : 'Generate questions & start practicing'}
+          </button>
+        </div>
       </div>
     );
   }
@@ -155,7 +221,7 @@ export default function PracticeSession() {
     <div className="max-w-2xl mx-auto p-6 mt-10 space-y-6">
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-500">
-          Practicing: <span className="font-medium text-gray-700">{ROLES.find((r) => r.value === selectedRole)?.label}</span>
+          Practicing: <span className="font-medium text-gray-700">{ROLES.find((r) => r.value === selectedRole)?.label || selectedRole}</span>
         </span>
         <button
           onClick={() => setSelectedRole(null)}

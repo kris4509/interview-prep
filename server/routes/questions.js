@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../config/db');
 const { authenticate } = require('../middleware/auth');
 const { generateQuestions } = require('../utils/questionGen');
+const { generateQuestionsFromJobDescription } = require('../utils/jobDescriptionGen');
 
 // GET /api/questions?category=behavioral&role_tag=backend
 router.get('/', authenticate, (req, res) => {
@@ -55,9 +56,6 @@ router.get('/random', authenticate, (req, res) => {
 
 // POST /api/questions/generate
 // body: { role_tag, count }
-// Generates new role-specific questions via Groq and saves them permanently
-// to the question bank, so the pool grows richer over time instead of
-// staying limited to whatever was manually seeded.
 router.post('/generate', authenticate, async (req, res) => {
   const { role_tag, count } = req.body;
 
@@ -88,6 +86,51 @@ router.post('/generate', authenticate, async (req, res) => {
   } catch (err) {
     console.error('Error generating questions:', err);
     res.status(500).json({ error: 'Failed to generate questions' });
+  }
+});
+
+// POST /api/questions/generate-from-jd
+// body: { job_description, label, count }
+// label is a short user-provided tag (e.g. "skyfalke_backend") used as the
+// role_tag so these questions are grouped per job application and can be
+// pulled back up later without needing a schema change.
+router.post('/generate-from-jd', authenticate, async (req, res) => {
+  const { job_description, label, count } = req.body;
+
+  if (!job_description || job_description.trim().length < 30) {
+    return res.status(400).json({ error: 'Please provide a fuller job description (at least a few sentences).' });
+  }
+  if (!label) {
+    return res.status(400).json({ error: 'A short label for this job (e.g. "skyfalke_backend") is required' });
+  }
+
+  // Normalize the label into something safe for a tag: lowercase, no spaces
+  const roleTag = `jd_${label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 40)}`;
+
+  try {
+    const questions = await generateQuestionsFromJobDescription(job_description, count || 6);
+
+    if (questions.length === 0) {
+      return res.status(502).json({ error: 'No valid questions were generated' });
+    }
+
+    const values = questions.map((q) => [q.text, q.category, roleTag, q.difficulty]);
+
+    db.query(
+      'INSERT INTO questions (text, category, role_tag, difficulty) VALUES ?',
+      [values],
+      (err, result) => {
+        if (err) return res.status(500).json({ error: 'Database error saving generated questions' });
+        res.status(201).json({
+          inserted: result.affectedRows,
+          role_tag: roleTag,
+          questions
+        });
+      }
+    );
+  } catch (err) {
+    console.error('Error generating questions from job description:', err);
+    res.status(500).json({ error: 'Failed to generate questions from job description' });
   }
 });
 
