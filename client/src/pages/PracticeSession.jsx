@@ -2,14 +2,6 @@ import React, { useState, useRef } from 'react';
 import api from '../api/client';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
-const ROLES = [
-  { value: 'general', label: 'General', icon: '🎯' },
-  { value: 'frontend', label: 'Frontend', icon: '🖥️' },
-  { value: 'backend', label: 'Backend', icon: '⚙️' },
-  { value: 'fullstack', label: 'Full-stack', icon: '🔗' },
-  { value: 'data', label: 'Data', icon: '📊' }
-];
-
 const card = { backgroundColor: '#161b22', border: '1px solid #30363d', borderRadius: '12px' };
 const cyan = '#06b6d4';
 const textPrimary = '#e6edf3';
@@ -22,8 +14,6 @@ export default function PracticeSession() {
   const [feedback, setFeedback] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [generating, setGenerating] = useState(false);
-  const [generateMessage, setGenerateMessage] = useState(null);
   const [jdText, setJdText] = useState('');
   const [jdLabel, setJdLabel] = useState('');
   const [jdSubmitting, setJdSubmitting] = useState(false);
@@ -38,29 +28,6 @@ export default function PracticeSession() {
     stopListening,
     resetTranscript
   } = useSpeechRecognition();
-
-  async function handleGenerateQuestions(role) {
-    setGenerating(true);
-    setGenerateMessage(null);
-    try {
-      const { data } = await api.post('/questions/generate', { role_tag: role, count: 5 });
-      setGenerateMessage(`✓ Added ${data.inserted} new ${role} questions.`);
-    } catch (err) {
-      setGenerateMessage('Failed to generate questions. Please try again.');
-    } finally {
-      setGenerating(false);
-    }
-  }
-
-  async function handleSelectRole(role) {
-    setSelectedRole(role);
-    const { data: session } = await api.post('/sessions', {
-      title: `Practice session — ${role}`,
-      mode: 'online'
-    });
-    setSessionId(session.id);
-    await loadNextQuestion(session.id, role);
-  }
 
   async function handleGenerateFromJD() {
     if (jdText.trim().length < 30) {
@@ -81,7 +48,7 @@ export default function PracticeSession() {
       });
       setSelectedRole(data.role_tag);
       const { data: session } = await api.post('/sessions', {
-        title: `Practice session — ${jdLabel.trim()}`,
+        title: `Practice — ${jdLabel.trim()}`,
         mode: 'online'
       });
       setSessionId(session.id);
@@ -93,14 +60,29 @@ export default function PracticeSession() {
     }
   }
 
+  async function handleGeneralPractice() {
+    setSelectedRole('general');
+    const { data: session } = await api.post('/sessions', {
+      title: 'General practice session',
+      mode: 'online'
+    });
+    setSessionId(session.id);
+    await loadNextQuestion(session.id, 'general');
+  }
+
   async function loadNextQuestion(sessionIdOverride, roleOverride) {
     setFeedback(null);
     resetTranscript();
     const role = roleOverride || selectedRole;
-    const { data } = await api.get('/questions/random', {
-      params: role === 'general' ? {} : { role_tag: role }
-    });
-    setQuestion(data);
+    try {
+      const { data } = await api.get('/questions/random', {
+        params: role === 'general' ? {} : { role_tag: role }
+      });
+      setQuestion(data);
+    } catch (err) {
+      // No questions found for this role — generate some on the fly
+      setError('No questions found for this role. Try generating from a job description.');
+    }
   }
 
   function handleStartAnswer() {
@@ -136,96 +118,95 @@ export default function PracticeSession() {
   if (!isSupported) {
     return (
       <div className="max-w-2xl mx-auto p-6 mt-10" style={{ ...card, borderColor: '#d97706' }}>
-        <p style={{ color: '#fbbf24' }}>Your browser doesn't support speech recognition. Please use Chrome or Edge.</p>
+        <p style={{ color: '#fbbf24' }}>
+          Your browser doesn't support speech recognition. Please use Chrome or Edge.
+        </p>
       </div>
     );
   }
 
+  // Role picker screen
   if (!selectedRole) {
     return (
-      <div className="max-w-lg mx-auto px-4 mt-10 pb-20">
+      <div className="max-w-xl mx-auto px-4 mt-8 pb-20">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold mb-1" style={{ color: textPrimary }}>Start Practicing</h1>
-          <p className="text-sm" style={{ color: textMuted }}>Pick a role or paste a job description to begin</p>
+          <h1 className="text-2xl font-bold mb-1" style={{ color: textPrimary }}>
+            Start Practicing
+          </h1>
+          <p className="text-sm" style={{ color: textMuted }}>
+            PrepAI works for any profession — paste your job description for tailored questions
+          </p>
         </div>
 
+        {/* PRIMARY: Job description */}
         <div style={card} className="p-5 mb-4">
-          <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: textMuted }}>Practice by role</p>
-          <div className="grid grid-cols-2 gap-2">
-            {ROLES.map((role) => (
-              <button
-                key={role.value}
-                onClick={() => handleSelectRole(role.value)}
-                className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-all text-left"
-                style={{
-                  backgroundColor: '#0d1117',
-                  border: '1px solid #30363d',
-                  color: textPrimary
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = cyan;
-                  e.currentTarget.style.color = cyan;
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = '#30363d';
-                  e.currentTarget.style.color = textPrimary;
-                }}
-              >
-                <span>{role.icon}</span>
-                <span>{role.label}</span>
-              </button>
-            ))}
+          <div className="flex items-center gap-2 mb-1">
+            <span
+              className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded"
+              style={{ backgroundColor: cyan, color: '#0d1117' }}
+            >
+              Recommended
+            </span>
+            <p className="text-sm font-semibold" style={{ color: textPrimary }}>
+              Practice from your job posting
+            </p>
           </div>
-
-          <div className="mt-4 pt-4" style={{ borderTop: '1px solid #30363d' }}>
-            <p className="text-xs mb-2" style={{ color: textMuted }}>Generate more questions for a role:</p>
-            <div className="flex flex-wrap gap-2">
-              {ROLES.map((role) => (
-                <button
-                  key={`gen-${role.value}`}
-                  onClick={() => handleGenerateQuestions(role.value)}
-                  disabled={generating}
-                  className="text-xs px-3 py-1 rounded-full transition-colors"
-                  style={{ border: `1px solid #30363d`, color: textMuted }}
-                >
-                  + {role.label}
-                </button>
-              ))}
-            </div>
-            {generating && <p className="text-xs mt-2" style={{ color: cyan }}>Generating...</p>}
-            {generateMessage && <p className="text-xs mt-2" style={{ color: '#3fb950' }}>{generateMessage}</p>}
-          </div>
-        </div>
-
-        <div style={card} className="p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: textMuted }}>Practice from a job posting</p>
-          <p className="text-xs mb-4" style={{ color: textMuted }}>Paste any job description — we'll tailor questions to it</p>
+          <p className="text-xs mb-4" style={{ color: textMuted }}>
+            Works for any role — software engineer, lawyer, procurement officer, teacher, nurse,
+            and more. Paste the actual job description and we generate questions specific to that posting.
+          </p>
           <input
             type="text"
-            placeholder='Label, e.g. "google_swe_intern"'
+            placeholder='Short label, e.g. "safaricom_procurement" or "knh_nurse"'
             value={jdLabel}
             onChange={(e) => setJdLabel(e.target.value)}
-            className="w-full rounded-lg px-3 py-2 text-sm mb-2 outline-none"
+            className="w-full rounded-lg px-3 py-2.5 text-sm mb-2 outline-none"
             style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: textPrimary }}
           />
           <textarea
-            placeholder="Paste the job description here..."
+            placeholder="Paste the full job description here..."
             value={jdText}
             onChange={(e) => setJdText(e.target.value)}
-            rows={5}
-            className="w-full rounded-lg px-3 py-2 text-sm mb-3 outline-none resize-none"
+            rows={6}
+            className="w-full rounded-lg px-3 py-2.5 text-sm mb-3 outline-none resize-none"
             style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: textPrimary }}
           />
-          {jdError && <p className="text-xs mb-2" style={{ color: '#f85149' }}>{jdError}</p>}
+          {jdError && (
+            <p className="text-xs mb-2" style={{ color: '#f85149' }}>{jdError}</p>
+          )}
           <button
             onClick={handleGenerateFromJD}
             disabled={jdSubmitting}
-            className="w-full py-2.5 rounded-lg text-sm font-medium transition-opacity"
+            className="w-full py-2.5 rounded-lg text-sm font-semibold transition-opacity"
             style={{ backgroundColor: cyan, color: '#0d1117', opacity: jdSubmitting ? 0.6 : 1 }}
           >
-            {jdSubmitting ? 'Generating questions...' : 'Generate & Start Practicing'}
+            {jdSubmitting ? 'Generating questions...' : '⚡ Generate & Start Practicing'}
           </button>
         </div>
+
+        {/* DIVIDER */}
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px" style={{ backgroundColor: '#30363d' }}></div>
+          <span className="text-xs" style={{ color: textMuted }}>or</span>
+          <div className="flex-1 h-px" style={{ backgroundColor: '#30363d' }}></div>
+        </div>
+
+        {/* SECONDARY: General fallback */}
+        <button
+          onClick={handleGeneralPractice}
+          className="w-full py-3 rounded-xl text-sm font-medium transition-all"
+          style={{ ...card, color: textMuted }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = cyan;
+            e.currentTarget.style.color = textPrimary;
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = '#30363d';
+            e.currentTarget.style.color = textMuted;
+          }}
+        >
+          Practice with general interview questions →
+        </button>
       </div>
     );
   }
@@ -241,32 +222,41 @@ export default function PracticeSession() {
   return (
     <div className="max-w-2xl mx-auto px-4 mt-8 pb-20 space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xs px-2 py-1 rounded-full font-medium" style={{ backgroundColor: '#0d1117', border: `1px solid ${cyan}`, color: cyan }}>
-            {ROLES.find((r) => r.value === selectedRole)?.icon} {ROLES.find((r) => r.value === selectedRole)?.label || selectedRole}
-          </span>
-        </div>
+        <span
+          className="text-xs px-2 py-1 rounded-full font-medium"
+          style={{ backgroundColor: '#0d1117', border: `1px solid ${cyan}`, color: cyan }}
+        >
+          {selectedRole === 'general' ? '🎯 General' : `📋 ${selectedRole.replace('jd_', '').replace(/_/g, ' ')}`}
+        </span>
         <button
-          onClick={() => setSelectedRole(null)}
+          onClick={() => { setSelectedRole(null); setQuestion(null); setFeedback(null); }}
           className="text-xs transition-colors"
           style={{ color: textMuted }}
         >
-          ← Change role
+          ← Change
         </button>
       </div>
 
       <div style={card} className="p-6">
-        <span className="inline-block text-xs font-medium px-2 py-1 rounded mb-3" style={{ backgroundColor: '#0d1117', color: cyan }}>
+        <span
+          className="inline-block text-xs font-medium px-2 py-1 rounded mb-3"
+          style={{ backgroundColor: '#0d1117', color: cyan }}
+        >
           {question.category.replace('_', ' ')}
         </span>
-        <h2 className="text-lg font-semibold leading-relaxed" style={{ color: textPrimary }}>{question.text}</h2>
+        <h2 className="text-lg font-semibold leading-relaxed" style={{ color: textPrimary }}>
+          {question.text}
+        </h2>
       </div>
 
       <div style={card} className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             {isListening && (
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: '#f85149' }}></span>
+              <span
+                className="w-2 h-2 rounded-full animate-pulse"
+                style={{ backgroundColor: '#f85149' }}
+              ></span>
             )}
             <span className="text-sm" style={{ color: isListening ? '#f85149' : textMuted }}>
               {isListening ? 'Recording...' : 'Ready when you are'}
@@ -294,7 +284,11 @@ export default function PracticeSession() {
 
         <div
           className="min-h-20 p-4 rounded-lg text-sm leading-relaxed"
-          style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: transcript ? textPrimary : textMuted }}
+          style={{
+            backgroundColor: '#0d1117',
+            border: '1px solid #30363d',
+            color: transcript ? textPrimary : textMuted
+          }}
         >
           {transcript || 'Your live transcript will appear here...'}
         </div>
@@ -340,22 +334,20 @@ function FeedbackCard({ feedback, onNext }) {
           <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#8b949e' }}>Pacing</p>
           <p className="text-sm" style={{ color: '#e6edf3' }}>{feedback.pacing_notes}</p>
         </div>
-
         <div className="p-4 rounded-lg" style={{ backgroundColor: '#0d1117', border: '1px solid #30363d' }}>
           <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: '#8b949e' }}>What's missing</p>
           <p className="text-sm" style={{ color: '#e6edf3' }}>{feedback.content_gap_notes}</p>
         </div>
-
-        <div className="p-4 rounded-lg" style={{ backgroundColor: '#0d1117', border: `1px solid #06b6d4` }}>
-          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#06b6d4' }}>Suggested rewrite</p>
+        <div className="p-4 rounded-lg" style={{ backgroundColor: '#0d1117', border: `1px solid ${cyan}` }}>
+          <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: cyan }}>Suggested rewrite</p>
           <p className="text-sm leading-relaxed" style={{ color: '#e6edf3' }}>{feedback.suggested_rewrite}</p>
         </div>
       </div>
 
       <button
         onClick={onNext}
-        className="w-full py-2.5 rounded-lg text-sm font-medium transition-opacity"
-        style={{ backgroundColor: '#06b6d4', color: '#0d1117' }}
+        className="w-full py-2.5 rounded-lg text-sm font-medium"
+        style={{ backgroundColor: cyan, color: '#0d1117' }}
       >
         Next Question →
       </button>
