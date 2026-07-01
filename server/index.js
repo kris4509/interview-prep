@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const ariaRoutes = require('./routes/aria');
 
 const authRoutes = require('./routes/auth');
 const questionRoutes = require('./routes/questions');
@@ -17,6 +18,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/responses', responseRoutes);
+app.use('/api/aria', ariaRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
