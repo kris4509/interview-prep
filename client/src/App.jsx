@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import PracticeSession from './pages/PracticeSession';
+import AriaInterview from './pages/AriaInterview';
 import SessionHistory from './pages/SessionHistory';
 
 function ProtectedRoute({ children }) {
@@ -76,7 +76,7 @@ export default function App() {
           path="/practice"
           element={
             <ProtectedRoute>
-              <PracticeSession />
+              <AriaInterview />
             </ProtectedRoute>
           }
         />
