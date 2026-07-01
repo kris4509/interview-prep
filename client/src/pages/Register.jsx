@@ -1,77 +1,118 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import AriaAvatar from '../components/AriaAvatar';
+import PrepAILogo from '../components/PrepAILogo';
 
 export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
+    setLoading(true);
     try {
       await register(name, email, password);
       navigate('/practice');
     } catch (err) {
       setError(err.response?.data?.error || 'Registration failed');
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: '#0d1117' }}>
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <span className="text-3xl font-bold" style={{ color: '#06b6d4' }}>⚡ PrepAI</span>
-          <p className="text-sm mt-2" style={{ color: '#8b949e' }}>AI-powered interview practice</p>
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center',
+      justifyContent: 'center', padding: 24,
+      background: 'var(--bg-primary)'
+    }}>
+      <div style={{ width: '100%', maxWidth: 420 }}>
+
+        {/* Logo + Aria */}
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <AriaAvatar size={100} speaking={false} />
+          </div>
+          <PrepAILogo size={40} showText={true} />
+          <p style={{ color: 'var(--gray)', fontSize: 14, marginTop: 8 }}>
+            Join PrepAI — practice with Aria for free
+          </p>
         </div>
 
-        <div className="p-6 rounded-xl" style={{ backgroundColor: '#161b22', border: '1px solid #30363d' }}>
-          <h1 className="text-lg font-semibold mb-5" style={{ color: '#e6edf3' }}>Create account</h1>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <input
-              type="text"
-              placeholder="Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
-              style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3' }}
-              required
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
-              style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3' }}
-              required
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
-              style={{ backgroundColor: '#0d1117', border: '1px solid #30363d', color: '#e6edf3' }}
-              required
-            />
-            {error && <p className="text-xs" style={{ color: '#f85149' }}>{error}</p>}
+        {/* Form card */}
+        <div className="glass" style={{ padding: 28 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 20, color: 'var(--white)' }}>
+            Create account
+          </h1>
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: 12 }}>
+              <input
+                type="text"
+                placeholder="Your name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                required
+                style={{
+                  width: '100%', padding: '12px 16px', borderRadius: 10, fontSize: 14,
+                  background: 'var(--bg-primary)', border: '1px solid var(--border)',
+                  color: 'var(--white)', outline: 'none'
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                style={{
+                  width: '100%', padding: '12px 16px', borderRadius: 10, fontSize: 14,
+                  background: 'var(--bg-primary)', border: '1px solid var(--border)',
+                  color: 'var(--white)', outline: 'none'
+                }}
+              />
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                style={{
+                  width: '100%', padding: '12px 16px', borderRadius: 10, fontSize: 14,
+                  background: 'var(--bg-primary)', border: '1px solid var(--border)',
+                  color: 'var(--white)', outline: 'none'
+                }}
+              />
+            </div>
+            {error && (
+              <p style={{ color: '#f85149', fontSize: 13, marginBottom: 12 }}>{error}</p>
+            )}
             <button
-              className="w-full py-2.5 rounded-lg text-sm font-medium mt-1"
-              style={{ backgroundColor: '#06b6d4', color: '#0d1117' }}
+              type="submit"
+              disabled={loading}
+              className="btn-primary"
+              style={{ width: '100%', fontSize: 15, padding: '13px' }}
             >
-              Create account
+              {loading ? 'Creating account...' : 'Create account'}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-sm mt-4" style={{ color: '#8b949e' }}>
+        <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--gray)', marginTop: 16 }}>
           Already have an account?{' '}
-          <Link to="/login" style={{ color: '#06b6d4' }}>Sign in</Link>
+          <Link to="/login" style={{ color: 'var(--cyan)', textDecoration: 'none', fontWeight: 500 }}>
+            Sign in
+          </Link>
         </p>
       </div>
     </div>
