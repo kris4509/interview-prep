@@ -6,6 +6,7 @@ import Register from './pages/Register';
 import AriaInterview from './pages/AriaInterview';
 import SessionHistory from './pages/SessionHistory';
 import PrepAILogo from './components/PrepAILogo';
+import Dashboard from './pages/Dashboard';
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
@@ -16,7 +17,8 @@ export default function App() {
   const { user, logout } = useAuth();
   const location = useLocation();
 
-  const navLinks = [
+    const navLinks = [
+    { path: '/dashboard', label: '🏠 Dashboard' },
     { path: '/practice', label: '🎤 Practice' },
     { path: '/history', label: '📜 History' }
   ];
@@ -91,7 +93,8 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/practice" element={<ProtectedRoute><AriaInterview /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><SessionHistory /></ProtectedRoute>} />
-        <Route path="/" element={<Navigate to="/practice" />} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />  
+        <Route path="/" element={<Navigate to="/dashboard" />} />
       </Routes>
     </div>
   );
